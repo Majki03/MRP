@@ -18,6 +18,7 @@ class Product:
         self.net_requirements = []
         self.planned_order_releases = []
         self.planned_order_receipts = []
+        self.components = {}  # Dodanie słownika komponentów
 
     def add_gross_requirement(self, requirement):
         # Dodawanie zapotrzebowania brutto do listy
@@ -26,6 +27,10 @@ class Product:
     def add_scheduled_receipt(self, receipt):
         # Dodawanie zaplanowanych przyjęć do listy
         self.scheduled_receipts.append(receipt)
+
+    def add_component(self, component, quantity):
+        # Dodawanie komponentu i jego ilości potrzebnej do produkcji
+        self.components[component.name] = quantity
 
 class MRP:
     def __init__(self):
@@ -70,6 +75,10 @@ class MRP:
             product.net_requirements.append(net_requirement)
             product.on_hand = max(0, on_hand + scheduled_receipt - gross_requirement)
 
+            # Aktualizacja zapotrzebowania brutto dla komponentów
+            for component_name, quantity in product.components.items():
+                self.products[component_name].add_gross_requirement(planned_order_receipt * quantity)
+
     def calculate_planned_order_receipt(self, net_requirement, lot_size):
         # Obliczanie zapotrzebowania na planowane przyjęcia z uwzględnieniem wielkości partii
         if net_requirement == 0:
@@ -81,53 +90,50 @@ def main():
     periods = 10
     mrp = MRP()
 
-    # Definicja produktów
-    product_A = Product("A", lead_time=2, start_inventory=50, safety_stock=10, lot_size=20)
-    product_B = Product("B", lead_time=1, start_inventory=30, safety_stock=5, lot_size=15)
+    # Pobieranie danych o produktach od użytkownika
+    num_products = int(input("Podaj liczbę produktów: "))
 
-    # Dodanie produktów do MRP
-    mrp.add_product(product_A)
-    mrp.add_product(product_B)
+    for _ in range(num_products):
+        name = input("Podaj nazwę produktu: ")
+        lead_time = int(input(f"Podaj czas realizacji dla produktu {name} (w okresach): "))
+        start_inventory = int(input(f"Podaj początkowy stan magazynowy dla produktu {name}: "))
+        safety_stock = int(input(f"Podaj minimalny poziom zapasów dla produktu {name}: "))
+        lot_size = int(input(f"Podaj wielkość partii produkcyjnej dla produktu {name}: "))
 
-    # Ustalanie zapotrzebowania brutto dla produktu A w poszczególnych okresach
-    product_A.add_gross_requirement(20)
-    product_A.add_gross_requirement(0)
-    product_A.add_gross_requirement(0)
-    product_A.add_gross_requirement(40)
-    product_A.add_gross_requirement(0)
-    product_A.add_gross_requirement(20)
-    product_A.add_gross_requirement(10)
-    product_A.add_gross_requirement(0)
-    product_A.add_gross_requirement(20)
-    product_A.add_gross_requirement(30)
+        product = Product(name, lead_time, start_inventory, safety_stock, lot_size)
+        mrp.add_product(product)
 
-    # Ustalanie zapotrzebowania brutto dla produktu B w poszczególnych okresach
-    product_B.add_gross_requirement(10)
-    product_B.add_gross_requirement(0)
-    product_B.add_gross_requirement(0)
-    product_B.add_gross_requirement(20)
-    product_B.add_gross_requirement(0)
-    product_B.add_gross_requirement(10)
-    product_B.add_gross_requirement(5)
-    product_B.add_gross_requirement(0)
-    product_B.add_gross_requirement(10)
-    product_B.add_gross_requirement(15)
+        # Pobieranie zapotrzebowania brutto od użytkownika dla każdego okresu
+        print(f"Podaj zapotrzebowanie brutto dla produktu {name} w kolejnych {periods} okresach:")
+        for period in range(periods):
+            requirement = int(input(f"Okres {period + 1}: "))
+            product.add_gross_requirement(requirement)
 
-    # Obliczenia MRP dla produktów A i B
-    mrp.calculate_mrp("A", periods)
-    mrp.calculate_mrp("B", periods)
+        # Pobieranie danych o komponentach dla danego produktu
+        num_components = int(input(f"Podaj liczbę komponentów dla produktu {name}: "))
 
-    # Wyświetlanie wyników dla produktu A
-    print("Product A")
-    print("Net Requirements: ", product_A.net_requirements)
-    print("Planned Order Releases: ", product_A.planned_order_releases)
-    print("Planned Order Receipts: ", product_A.planned_order_receipts)
+        for _ in range(num_components):
+            component_name = input("Podaj nazwę komponentu: ")
+            component_lead_time = int(input(f"Podaj czas realizacji dla komponentu {component_name} (w okresach): "))
+            component_start_inventory = int(input(f"Podaj początkowy stan magazynowy dla komponentu {component_name}: "))
+            component_safety_stock = int(input(f"Podaj minimalny poziom zapasów dla komponentu {component_name}: "))
+            component_lot_size = int(input(f"Podaj wielkość partii produkcyjnej dla komponentu {component_name}: "))
+            quantity = int(input(f"Podaj ilość komponentu {component_name} potrzebną do produkcji {name}: "))
 
-    # Wyświetlanie wyników dla produktu B
-    print("Product B")
-    print("Net Requirements: ", product_B.net_requirements)
-    print("Planned Order Releases: ", product_B.planned_order_releases)
-    print("Planned Order Receipts: ", product_B.planned_order_receipts)
+            component = Product(component_name, component_lead_time, component_start_inventory, component_safety_stock, component_lot_size)
+            mrp.add_product(component)
+            product.add_component(component, quantity)
+
+    # Obliczenia MRP dla każdego produktu
+    for product_name in mrp.products:
+        mrp.calculate_mrp(product_name, periods)
+
+    # Wyświetlanie wyników dla każdego produktu i komponentu
+    for product_name, product in mrp.products.items():
+        print(f"\nProduct {product_name}")
+        print("Net Requirements: ", product.net_requirements)
+        print("Planned Order Releases: ", product.planned_order_releases)
+        print("Planned Order Receipts: ", product.planned_order_receipts)
 
 if __name__ == "__main__":
     main()
