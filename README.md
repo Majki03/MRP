@@ -76,7 +76,6 @@ def calculate_planned_order_receipt(self, net_requirement, lot_size)
 * Oblicza planowane przyjęcie zamówienia na podstawie zapotrzebowania netto i wielkości partii.
 
 Funkcja 'main'
-Funkcja 'main'
 ```python
 def main()
 ```
@@ -109,6 +108,9 @@ python mrp_calculator.py
         * Wielkość partii produkcyjnej.
 3. Wprowadzenie zapotrzebowania brutto:
     * Dla każdego produktu podaj zapotrzebowanie brutto w kolejnych okresach.
+    * Stopę wzrostu zapotrzebowania brutto.
+    * Liczbę okresów (tygodni), na kiedy potrzebny jest produkt.
+    * Czas transportu produktu.
 4. Podanie liczby komponentów dla każdego produktu:
     * Na pytanie "Podaj liczbę komponentów dla produktu {nazwa}:" wpisz liczbę komponentów potrzebnych do produkcji tego produktu.
 5. Wprowadzenie danych dla każdego komponentu:
@@ -140,7 +142,10 @@ python mrp_calculator.py
         * Początkowy stan magazynowy: '50'
         * Minimalny poziom zapasów: '10'
         * Wielkość partii produkcyjnej: '20'
-        * Zapotrzebowanie brutto (dla 10 okresów): '5 10 15 20 25 30 35 40 45 50'
+        * Początkowa wartość zapotrzebowania brutto: '5'
+        * Stopa wzrostu zapotrzebowania brutto: '0.1'
+        * Liczba okresów: '5'
+        * Czas transportu: '1'
     * Komponenty dla 'Krzesło':
         * Liczba komponentów: '3'
         * Komponent 1:
@@ -170,7 +175,10 @@ python mrp_calculator.py
         * Początkowy stan magazynowy: '30'
         * Minimalny poziom zapasów: '5'
         * Wielkość partii produkcyjnej: '10'
-        * Zapotrzebowanie brutto (dla 10 okresów): '3 6 9 12 15 18 21 24 27 30'
+        * Początkowa wartość zapotrzebowania brutto: '3'
+        * Stopa wzrostu zapotrzebowania brutto: '0.1'
+        * Liczba okresów: '6'
+        * Czas transportu: '1'
     * Komponenty dla 'Stół':
         * Liczba komponentów: '2'
         * Komponent 1:
@@ -189,6 +197,7 @@ python mrp_calculator.py
             * Ilość: '1'
 3. Wyniki:
     * Program obliczy zapotrzebowanie netto, planowane zwolnienia zamówień i planowane przyjęcia zamówień dla każdego produktu i komponentu.
+    * Jeśli czas produkcji i transportu przekroczy zadaną liczbę okresów, wyświetli odpowiedni komunikat.
 
 ---
 

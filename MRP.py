@@ -3,94 +3,89 @@ import numpy as np
 
 class Product:
     def __init__(self, name, lead_time, start_inventory, safety_stock=0, lot_size=1):
-        # Inicjalizacja obiektu Product z nazwą, czasem realizacji, początkowym stanem magazynowym,
-        # minimalnym poziomem zapasów i wielkością partii produkcyjnej
-        self.name = name
-        self.lead_time = lead_time
-        self.start_inventory = start_inventory
-        self.safety_stock = safety_stock
-        self.lot_size = lot_size
-        # Listy do przechowywania zapotrzebowania brutto, zaplanowanych przyjęć,
-        # zaplanowanych zwolnień zamówień itp.
-        self.gross_requirements = []
-        self.scheduled_receipts = []
-        self.on_hand = start_inventory
-        self.net_requirements = []
-        self.planned_order_releases = []
-        self.planned_order_receipts = []
-        self.components = {}  # Dodanie słownika komponentów
+        self.name = name  # Nazwa produktu
+        self.lead_time = lead_time  # Czas realizacji produktu
+        self.start_inventory = start_inventory  # Początkowy stan magazynowy
+        self.safety_stock = safety_stock  # Minimalny poziom zapasów (safety stock)
+        self.lot_size = lot_size  # Wielkość partii produkcyjnej
+        self.gross_requirements = []  # Zapotrzebowanie brutto na okres
+        self.scheduled_receipts = []  # Zaplanowane przyjęcia na okres
+        self.on_hand = start_inventory  # Bieżący stan magazynowy
+        self.net_requirements = []  # Zapotrzebowanie netto na okres
+        self.planned_order_releases = []  # Planowane zwolnienia zamówień na okres
+        self.planned_order_receipts = []  # Planowane przyjęcia zamówień na okres
+        self.components = {}  # Komponenty produktu i ich ilości
 
     def add_gross_requirement(self, requirement):
-        # Dodawanie zapotrzebowania brutto do listy
-        self.gross_requirements.append(requirement)
+        self.gross_requirements.append(requirement)  # Dodaje zapotrzebowanie brutto
 
     def add_scheduled_receipt(self, receipt):
-        # Dodawanie zaplanowanych przyjęć do listy
-        self.scheduled_receipts.append(receipt)
+        self.scheduled_receipts.append(receipt)  # Dodaje zaplanowane przyjęcie
 
     def add_component(self, component, quantity):
-        # Dodawanie komponentu i jego ilości potrzebnej do produkcji
-        self.components[component.name] = quantity
+        self.components[component.name] = quantity  # Dodaje komponent i jego ilość
 
 class MRP:
     def __init__(self):
-        # Inicjalizacja obiektu MRP z pustym słownikiem produktów
-        self.products = {}
+        self.products = {}  # Lista produktów
 
     def add_product(self, product):
-        # Dodawanie produktu do słownika produktów
-        self.products[product.name] = product
+        self.products[product.name] = product  # Dodaje produkt do listy
 
-    def calculate_mrp(self, product_name, periods):
-        # Obliczanie MRP dla danego produktu na określoną liczbę okresów
-        product = self.products[product_name]
+    def calculate_mrp(self, product_name, periods, transport_time):
+        product = self.products[product_name]  # Pobiera produkt z listy
+        total_time_needed = product.lead_time + transport_time  # Oblicza całkowity czas potrzebny na produkcję i transport
 
+        # Sprawdza czas realizacji komponentów i aktualizuje total_time_needed, jeśli to konieczne
+        for component_name, quantity in product.components.items():
+            component = self.products[component_name]
+            total_time_needed = max(total_time_needed, component.lead_time + product.lead_time + transport_time)
+
+        # Jeśli całkowity czas potrzebny przekracza liczbę okresów, wyświetla komunikat o błędzie
+        if total_time_needed > periods:
+            print(f"Zamówienie nie możliwe do zrealizowania w tym terminie dla produktu {product_name}.")
+            return
+
+        # Oblicza zapotrzebowanie netto, planowane zwolnienia zamówień i planowane przyjęcia zamówień dla każdego okresu
         for period in range(periods):
-            # Pobieranie zapotrzebowania brutto i zaplanowanych przyjęć na dany okres
             gross_requirement = product.gross_requirements[period] if period < len(product.gross_requirements) else 0
             scheduled_receipt = product.scheduled_receipts[period] if period < len(product.scheduled_receipts) else 0
 
             if period == 0:
-                # Ustawianie początkowego stanu magazynowego dla pierwszego okresu
-                on_hand = product.start_inventory
+                on_hand = product.start_inventory  # Początkowy stan magazynowy dla pierwszego okresu
             else:
-                # Aktualizacja stanu magazynowego na podstawie poprzedniego okresu
-                on_hand = product.on_hand
+                on_hand = product.on_hand  # Aktualizowany stan magazynowy dla kolejnych okresów
 
-            # Obliczanie zapotrzebowania netto
             net_requirement = max(0, gross_requirement - on_hand - scheduled_receipt + product.safety_stock)
-            # Obliczanie planowanego przyjęcia zamówienia na podstawie zapotrzebowania netto i wielkości partii
             planned_order_receipt = self.calculate_planned_order_receipt(net_requirement, product.lot_size)
 
+            # Planuje zamówienia, jeśli czas realizacji pozwala na przyjęcie w zadanym okresie
             if period + product.lead_time < periods:
-                # Dodawanie planowanego przyjęcia i zwolnienia zamówienia do list
                 product.planned_order_receipts.append(planned_order_receipt)
                 product.planned_order_releases.append(planned_order_receipt)
             else:
-                # Dodawanie zerowych wartości, jeśli zamówienie nie mieści się w okresach
                 product.planned_order_receipts.append(0)
                 product.planned_order_releases.append(0)
 
-            # Aktualizacja zapotrzebowania netto i stanu magazynowego
             product.net_requirements.append(net_requirement)
             product.on_hand = max(0, on_hand + scheduled_receipt - gross_requirement)
 
-            # Aktualizacja zapotrzebowania brutto dla komponentów
+            # Aktualizuje zapotrzebowanie brutto dla komponentów
             for component_name, quantity in product.components.items():
                 self.products[component_name].add_gross_requirement(planned_order_receipt * quantity)
 
     def calculate_planned_order_receipt(self, net_requirement, lot_size):
-        # Obliczanie zapotrzebowania na planowane przyjęcia z uwzględnieniem wielkości partii
         if net_requirement == 0:
-            return 0
+            return 0  # Jeśli nie ma zapotrzebowania netto, nie planuje zamówienia
         else:
-            return ((net_requirement + lot_size - 1) // lot_size) * lot_size
+            return ((net_requirement + lot_size - 1) // lot_size) * lot_size  # Oblicza planowane zamówienie na podstawie wielkości partii produkcyjnej
+
+def generate_gross_requirements(start_value, growth_rate, periods):
+    return [int(start_value * (1 + growth_rate) ** i) for i in range(periods)]  # Generuje zapotrzebowanie brutto na podstawie początkowej wartości i stopy wzrostu
 
 def main():
-    periods = 10
     mrp = MRP()
 
-    # Pobieranie danych o produktach od użytkownika
     num_products = int(input("Podaj liczbę produktów: "))
 
     for _ in range(num_products):
@@ -99,17 +94,19 @@ def main():
         start_inventory = int(input(f"Podaj początkowy stan magazynowy dla produktu {name}: "))
         safety_stock = int(input(f"Podaj minimalny poziom zapasów dla produktu {name}: "))
         lot_size = int(input(f"Podaj wielkość partii produkcyjnej dla produktu {name}: "))
+        start_value = int(input(f"Podaj początkową wartość zapotrzebowania brutto dla produktu {name}: "))
+        growth_rate = float(input(f"Podaj stopę wzrostu zapotrzebowania brutto (np. 0.1 dla 10%): "))
 
         product = Product(name, lead_time, start_inventory, safety_stock, lot_size)
         mrp.add_product(product)
 
-        # Pobieranie zapotrzebowania brutto od użytkownika dla każdego okresu
-        print(f"Podaj zapotrzebowanie brutto dla produktu {name} w kolejnych {periods} okresach:")
-        for period in range(periods):
-            requirement = int(input(f"Okres {period + 1}: "))
+        periods = int(input(f"Podaj liczbę okresów (tygodni) dla produktu {name}: "))
+        transport_time = int(input(f"Podaj czas transportu (w tygodniach) dla produktu {name}: "))
+
+        gross_requirements = generate_gross_requirements(start_value, growth_rate, periods)
+        for requirement in gross_requirements:
             product.add_gross_requirement(requirement)
 
-        # Pobieranie danych o komponentach dla danego produktu
         num_components = int(input(f"Podaj liczbę komponentów dla produktu {name}: "))
 
         for _ in range(num_components):
@@ -124,11 +121,10 @@ def main():
             mrp.add_product(component)
             product.add_component(component, quantity)
 
-    # Obliczenia MRP dla każdego produktu
-    for product_name in mrp.products:
-        mrp.calculate_mrp(product_name, periods)
+        # Oblicza MRP dla produktu uwzględniając liczbę okresów i czas transportu
+        mrp.calculate_mrp(name, periods, transport_time)
 
-    # Wyświetlanie wyników dla każdego produktu i komponentu
+    # Wyświetla wyniki obliczeń MRP dla każdego produktu i komponentu
     for product_name, product in mrp.products.items():
         print(f"\nProduct {product_name}")
         print("Net Requirements: ", product.net_requirements)
